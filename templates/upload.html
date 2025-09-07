@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seen Photos - Secure Photo Sharing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: #fafafa;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .upload-area.dragging {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .file-name {
+            margin-top: 10px;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .options-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .option-group {
+            margin-bottom: 20px;
+        }
+        
+        .option-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .option-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .view-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 10px;
+        }
+        
+        .view-option {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .view-option:hover {
+            border-color: #667eea;
+        }
+        
+        .view-option.selected {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .view-option input[type="radio"] {
+            display: none;
+        }
+        
+        .pin-input {
+            width: 150px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px;
+            letter-spacing: 5px;
+            text-align: center;
+        }
+        
+        .pin-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-wrapper label {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+            display: none;
+            width: 100%;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .upload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .url-display {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+        }
+        
+        .feature-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .feature-pill {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Seen Photos</h1>
+        <p class="subtitle">Secure photo sharing with custom privacy controls</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <p>Click to select or drag & drop your photo here</p>
+            <p style="font-size: 12px; color: #999; margin-top: 10px;">Max 10MB • JPG, PNG, GIF, WebP</p>
+            <div class="file-name" id="fileName"></div>
+        </div>
+        
+        <input type="file" id="fileInput" accept="image/*">
+        
+        <div class="options-section" id="optionsSection">
+            <div class="option-group">
+                <label class="option-label">📊 How many times can this photo be viewed?</label>
+                <div class="view-options">
+                    <label class="view-option">
+                        <input type="radio" name="max_views" value="1" checked>
+                        <div>1</div>
+                    </label>
+                    <label class="view-option">
+                        <input type="radio" name="max_views" value="3">
+                        <div>3</div>
+                    </label>
+                    <label class="view-option">
+                        <input type="radio" name="max_views" value="5">
+                        <div>5</div>
+                    </label>
+                    <label class="view-option">
+                        <input type="radio" name="max_views" value="10">
+                        <div>10</div>
+                    </label>
+                    <label class="view-option">
+                        <input type="radio" name="max_views" value="-1">
+                        <div>∞</div>
+                    </label>
+                </div>
+                <p class="info-text">Photos auto-delete after 24 hours regardless of view count</p>
+            </div>
+            
+            <div class="option-group">
+                <label class="option-label">🔐 Set a 4-digit PIN (optional)</label>
+                <input type="text" 
+                       id="pinInput" 
+                       class="pin-input" 
+                       maxlength="4" 
+                       placeholder="••••"
+                       pattern="\d{4}">
+                <p class="info-text">Viewers will need this PIN to see the photo</p>
+            </div>
+            
+            <div class="option-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="preventDownload">
+                    <label for="preventDownload">🚫 Prevent photo download (disable right-click)</label>
+                </div>
+                <p class="info-text">Makes it harder to save the image (not 100% preventable)</p>
+            </div>
+        </div>
+        
+        <button class="upload-btn" id="uploadBtn">Upload Photo</button>
+        
+        <div class="result" id="result"></div>
+    </div>
+    
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const result = document.getElementById('result');
+        const optionsSection = document.getElementById('optionsSection');
+        const pinInput = document.getElementById('pinInput');
+        
+        let selectedFile = null;
+        
+        // View option selection
+        document.querySelectorAll('.view-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.view-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                this.querySelector('input').checked = true;
+            });
+        });
+        
+        // Set first option as selected
+        document.querySelector('.view-option').classList.add('selected');
+        
+        // PIN input formatting
+        pinInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+        
+        // Click to select file
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                fileName.textContent = file.name;
+                optionsSection.style.display = 'block';
+                uploadBtn.style.display = 'block';
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragging');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragging');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragging');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                selectedFile = file;
+                fileName.textContent = file.name;
+                optionsSection.style.display = 'block';
+                uploadBtn.style.display = 'block';
+            }
+        });
+        
+        // Upload
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            const pin = pinInput.value;
+            if (pin && pin.length !== 4) {
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = '<strong>❌ Error:</strong> PIN must be exactly 4 digits';
+                return;
+            }
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            const formData = new FormData();
+            formData.append('photo', selectedFile);
+            formData.append('max_views', document.querySelector('input[name="max_views"]:checked').value);
+            formData.append('pin', pin);
+            formData.append('prevent_download', document.getElementById('preventDownload').checked);
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    result.style.display = 'block';
+                    
+                    let featuresHtml = '<div class="feature-pills">';
+                    if (data.details.max_views === -1) {
+                        featuresHtml += '<span class="feature-pill">♾️ Unlimited views (24h)</span>';
+                    } else {
+                        featuresHtml += `<span class="feature-pill">👁️ ${data.details.max_views} view${data.details.max_views > 1 ? 's' : ''}</span>`;
+                    }
+                    if (data.details.pin_protected) {
+                        featuresHtml += '<span class="feature-pill">🔐 PIN protected</span>';
+                    }
+                    if (data.details.download_prevented) {
+                        featuresHtml += '<span class="feature-pill">🚫 Download prevented</span>';
+                    }
+                    featuresHtml += '</div>';
+                    
+                    result.innerHTML = `
+                        <strong>✅ Success!</strong>
+                        <p>${data.message}</p>
+                        ${featuresHtml}
+                        <div class="url-display">${data.url}</div>
+                        <button class="copy-btn" onclick="copyUrl('${data.url}')">Copy Link</button>
+                    `;
+                    
+                    // Reset form
+                    selectedFile = null;
+                    fileInput.value = '';
+                    fileName.textContent = '';
+                    uploadBtn.style.display = 'none';
+                    optionsSection.style.display = 'none';
+                    pinInput.value = '';
+                    document.getElementById('preventDownload').checked = false;
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Photo';
+            }
+        });
+        
+        function copyUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = '#28a745';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

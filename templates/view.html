@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Photo - Seen Photos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .error-container {
+            color: #dc3545;
+            font-size: 18px;
+        }
+        
+        .pin-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .pin-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .pin-input {
+            font-size: 32px;
+            letter-spacing: 15px;
+            text-align: center;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            width: 200px;
+            margin: 20px auto;
+            display: block;
+        }
+        
+        .pin-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .pin-submit:hover {
+            transform: translateY(-2px);
+        }
+        
+        .photo-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+        }
+        
+        .photo-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .no-download {
+            position: relative;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            pointer-events: none;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+            background: transparent;
+        }
+        
+        .views-remaining {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            color: #666;
+        }
+        
+        .loading {
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-msg {
+            color: #dc3545;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if error %}
+            <div class="error-container">
+                <h2>❌ {{ error }}</h2>
+                <p style="margin-top: 20px;">
+                    <a href="/" style="color: #667eea;">← Upload a new photo</a>
+                </p>
+            </div>
+        {% else %}
+            {% if pin_required %}
+                <div class="pin-container" id="pinContainer">
+                    <h2 class="pin-title">🔒 PIN Required</h2>
+                    <p>Enter the 4-digit PIN to view this photo</p>
+                    <input type="text" 
+                           id="pinInput" 
+                           class="pin-input" 
+                           maxlength="4" 
+                           pattern="\d{4}" 
+                           placeholder="••••"
+                           autocomplete="off">
+                    <button class="pin-submit" onclick="submitPin()">View Photo</button>
+                    <div class="error-msg" id="pinError"></div>
+                </div>
+            {% endif %}
+            
+            <div id="photoContainer" style="display: {% if pin_required %}none{% else %}block{% endif %};">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Loading photo...</p>
+                </div>
+                <div class="photo-container" id="imageWrapper" style="display: none;">
+                    <!-- Photo will be inserted here -->
+                </div>
+                <div class="views-remaining" id="viewsInfo" style="display: none;">
+                    <!-- Views info will be inserted here -->
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        const token = "{{ token }}";
+        const pinRequired = {{ pin_required|lower }};
+        const preventDownload = {{ prevent_download|lower }};
+        
+        // Auto-load photo if no PIN required
+        if (!pinRequired && token) {
+            loadPhoto();
+        }
+        
+        // PIN input formatting
+        const pinInput = document.getElementById('pinInput');
+        if (pinInput) {
+            pinInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+            
+            pinInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.value.length === 4) {
+                    submitPin();
+                }
+            });
+        }
+        
+        async function submitPin() {
+            const pin = document.getElementById('pinInput').value;
+            const errorDiv = document.getElementById('pinError');
+            
+            if (pin.length !== 4) {
+                errorDiv.textContent = 'Please enter a 4-digit PIN';
+                return;
+            }
+            
+            await loadPhoto(pin);
+        }
+        
+        async function loadPhoto(pin = null) {
+            const loading = document.getElementById('loading');
+            const imageWrapper = document.getElementById('imageWrapper');
+            const viewsInfo = document.getElementById('viewsInfo');
+            const pinContainer = document.getElementById('pinContainer');
+            const photoContainer = document.getElementById('photoContainer');
+            
+            if (pinContainer) {
+                pinContainer.style.display = 'none';
+            }
+            photoContainer.style.display = 'block';
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch(`/api/view/${token}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ pin: pin || '' })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        document.getElementById('pinError').textContent = 'Invalid PIN';
+                        if (pinContainer) {
+                            pinContainer.style.display = 'block';
+                        }
+                        photoContainer.style.display = 'none';
+                    } else {
+                        throw new Error(data.error || 'Failed to load photo');
+                    }
+                    return;
+                }
+                
+                loading.style.display = 'none';
+                
+                // Create image element
+                const img = document.createElement('img');
+                img.src = data.image;
+                img.alt = 'Shared photo';
+                
+                // Apply download prevention if enabled
+                if (data.prevent_download) {
+                    img.className = 'no-download';
+                    img.setAttribute('draggable', 'false');
+                    
+                    // Create overlay to prevent right-click
+                    const overlay = document.createElement('div');
+                    overlay.className = 'overlay';
+                    imageWrapper.appendChild(overlay);
+                    
+                    // Disable right-click context menu
+                    img.addEventListener('contextmenu', (e) => e.preventDefault());
+                    document.addEventListener('contextmenu', (e) => e.preventDefault());
+                }
+                
+                imageWrapper.appendChild(img);
+                imageWrapper.style.display = 'block';
+                
+                // Show views remaining
+                if (data.views_remaining !== 'unlimited') {
+                    viewsInfo.innerHTML = `📊 Views remaining: <strong>${data.views_remaining}</strong>`;
+                } else {
+                    viewsInfo.innerHTML = `📊 Unlimited views (expires in 24 hours)`;
+                }
+                viewsInfo.style.display = 'block';
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                imageWrapper.innerHTML = `<div class="error-msg">❌ ${error.message}</div>`;
+                imageWrapper.style.display = 'block';
+            }
+        }
+        
+        // Additional download prevention measures
+        if (preventDownload) {
+            // Disable drag
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.tagName === 'IMG') {
+                    e.preventDefault();
+                }
+            });
+            
+            // Disable save keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
