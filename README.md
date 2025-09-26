@@ -1,3 +1,1 @@
-You can access the service at
-
-[photos.nyvs.me](photos.nyvs.me)
+You can access the service at [photos.nyvs.me](photos.nyvs.me)
