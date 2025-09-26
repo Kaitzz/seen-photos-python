@@ -6,11 +6,12 @@ from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from storage import S3Storage
 from config import Config
+from flask_cors import CORS
 import json
 
 app = Flask(__name__)
 app.config.from_object(Config)
-
+CORS(app, origins=['https://photos.nyvs.me/'])
 # Initialize S3 storage
 storage = S3Storage()
 
